@@ -1,18 +1,18 @@
 """
 generate_scenarios.py
 
-Reads PJM system-wide hourly average RT LMP from the external drive,
-cleans the data, and generates 50 representative daily price scenarios
-using k-means clustering. Saves results to data/scenarios/.
+Reads PJM system-wide hourly average RT LMP and generates 50 representative daily price scenarios.
 
 Data source: D:/pjm-project/data/raw/pjm/pjm_system_lmp_hourly_avg.csv
 Training window: 2020-01-01 through 2023-12-31 (hold out 2024+ for backtest)
 """
 
 import os
+
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
@@ -20,12 +20,12 @@ from sklearn.preprocessing import StandardScaler
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 RAW_PATH = "D:/pjm-project/data/raw/pjm/pjm_system_lmp_hourly_avg.csv"
-OUT_DIR   = os.path.join(os.path.dirname(__file__), "..", "data", "scenarios")
+OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "scenarios")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-N_SCENARIOS   = 50
-TRAIN_END     = "2023-12-31"
-RANDOM_SEED   = 42
+N_SCENARIOS = 50
+TRAIN_END = "2023-12-31"
+RANDOM_SEED = 42
 
 # ── 1. Load ───────────────────────────────────────────────────────────────────
 print("Loading data...")
@@ -66,15 +66,16 @@ train["date"] = train["datetime"].dt.date
 train["hour"] = train["datetime"].dt.hour
 
 daily = (
-    train.pivot(index="date", columns="hour", values="lmp")
-    .dropna()                          # drop days with any missing hour
+    train.pivot(
+        index="date", columns="hour", values="lmp"
+    ).dropna()  # drop days with any missing hour
 )
 daily.columns = [f"h{c:02d}" for c in daily.columns]
 print(f"  Daily profiles: {len(daily)} complete days")
 
 # ── 5. K-means clustering → 50 scenarios ─────────────────────────────────────
 print(f"\nClustering into {N_SCENARIOS} scenarios...")
-scaler  = StandardScaler()
+scaler = StandardScaler()
 X_scaled = scaler.fit_transform(daily.values)
 
 km = KMeans(n_clusters=N_SCENARIOS, random_state=RANDOM_SEED, n_init=20, max_iter=500)
@@ -88,9 +89,9 @@ labels, counts = np.unique(km.labels_, return_counts=True)
 probs = counts / counts.sum()
 
 # Sort by probability (descending) for readability
-order    = np.argsort(-probs)
+order = np.argsort(-probs)
 centroids = centroids[order]
-probs     = probs[order]
+probs = probs[order]
 scenario_ids = np.arange(1, N_SCENARIOS + 1)
 
 # ── 6. Save ───────────────────────────────────────────────────────────────────
@@ -106,27 +107,31 @@ print(f"\nSaved: {scen_path}")
 
 # 6b. scenario_metadata.csv  —  summary stats per scenario
 meta = scen_df[["scenario_id", "probability"]].copy()
-meta["mean_lmp"]  = centroids.mean(axis=1)
-meta["min_lmp"]   = centroids.min(axis=1)
-meta["max_lmp"]   = centroids.max(axis=1)
+meta["mean_lmp"] = centroids.mean(axis=1)
+meta["min_lmp"] = centroids.min(axis=1)
+meta["max_lmp"] = centroids.max(axis=1)
 meta["peak_hour"] = centroids.argmax(axis=1)
 meta_path = os.path.join(OUT_DIR, "scenario_metadata.csv")
 meta.to_csv(meta_path, index=False, float_format="%.4f")
 print(f"Saved: {meta_path}")
 
 # 6c. cleaning_log.csv  —  audit trail
-log = pd.DataFrame([{
-    "raw_rows":          len(df),
-    "train_rows":        len(train),
-    "duplicate_drops":   n_before - (n_before - (n_before - len(train))),
-    "missing_filled":    int(n_missing),
-    "outliers_clipped":  int(n_clipped),
-    "p01_clip":          round(p01, 4),
-    "p99_clip":          round(p99, 4),
-    "complete_days":     len(daily),
-    "n_scenarios":       N_SCENARIOS,
-    "train_end":         TRAIN_END,
-}])
+log = pd.DataFrame(
+    [
+        {
+            "raw_rows": len(df),
+            "train_rows": len(train),
+            "duplicate_drops": n_before - (n_before - (n_before - len(train))),
+            "missing_filled": int(n_missing),
+            "outliers_clipped": int(n_clipped),
+            "p01_clip": round(p01, 4),
+            "p99_clip": round(p99, 4),
+            "complete_days": len(daily),
+            "n_scenarios": N_SCENARIOS,
+            "train_end": TRAIN_END,
+        }
+    ]
+)
 log_path = os.path.join(OUT_DIR, "cleaning_log.csv")
 log.to_csv(log_path, index=False)
 print(f"Saved: {log_path}")
@@ -140,12 +145,15 @@ for i in range(N_SCENARIOS):
 
 # Highlight top-5 most probable
 for i in range(5):
-    ax.plot(hours, centroids[i], linewidth=2,
-            label=f"S{scenario_ids[i]} (p={probs[i]:.3f})")
+    ax.plot(
+        hours, centroids[i], linewidth=2, label=f"S{scenario_ids[i]} (p={probs[i]:.3f})"
+    )
 
-ax.set_xlabel("Hour of Day (EPT)")
+ax.set_xlabel("Hour of Day (EST)")
 ax.set_ylabel("System Avg LMP ($/MWh)")
-ax.set_title(f"PJM System RT LMP — {N_SCENARIOS} K-Means Scenarios (2020–2023 training)")
+ax.set_title(
+    f"PJM System RT LMP — {N_SCENARIOS} K-Means Scenarios (2020–2023 training)"
+)
 ax.set_xticks(hours)
 ax.legend(fontsize=8, loc="upper left")
 ax.grid(True, alpha=0.3)
@@ -153,5 +161,29 @@ plt.tight_layout()
 fig_path = os.path.join(OUT_DIR, "scenario_fan.png")
 fig.savefig(fig_path, dpi=150)
 print(f"Saved: {fig_path}")
+
+# ── 8. Grid plot: all 50 scenarios ───────────────────────────────────────────
+NCOLS, NROWS = 10, 5
+fig2, axes = plt.subplots(NROWS, NCOLS, figsize=(22, 10), sharey=True)
+axes = axes.flatten()
+
+for i in range(N_SCENARIOS):
+    ax = axes[i]
+    ax.plot(hours, centroids[i], color="steelblue", linewidth=1.2)
+    ax.fill_between(hours, centroids[i], alpha=0.15, color="steelblue")
+    ax.set_title(f"S{scenario_ids[i]}\np={probs[i]:.3f}", fontsize=7, pad=2)
+    ax.set_xticks([0, 6, 12, 18, 23])
+    ax.tick_params(labelsize=6)
+    ax.grid(True, alpha=0.3, linewidth=0.5)
+
+fig2.suptitle(
+    "PJM System RT LMP — All 50 K-Means Scenarios (2020-2023 training)\n"
+    "Y-axis: System Avg LMP ($/MWh)   X-axis: Hour of Day (EPT)",
+    fontsize=10
+)
+plt.tight_layout()
+grid_path = os.path.join(OUT_DIR, "scenario_grid.png")
+fig2.savefig(grid_path, dpi=150)
+print(f"Saved: {grid_path}")
 
 print("\nDone.")
