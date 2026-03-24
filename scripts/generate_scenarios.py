@@ -1,189 +1,221 @@
 """
 generate_scenarios.py
 
-Reads PJM system-wide hourly average RT LMP and generates 50 representative daily price scenarios.
+Reads PJM system-wide hourly average RT LMP, cleans the data, and generates
+50 representative daily price scenarios using season-stratified k-means:
+  Winter (Dec/Jan/Feb): 13 scenarios
+  Spring (Mar/Apr/May): 12 scenarios
+  Summer (Jun/Jul/Aug): 13 scenarios
+  Fall   (Sep/Oct/Nov): 12 scenarios
+
+Probabilities are computed as (days in cluster) / (total training days).
 
 Data source: D:/pjm-project/data/raw/pjm/pjm_system_lmp_hourly_avg.csv
 Training window: 2020-01-01 through 2023-12-31 (hold out 2024+ for backtest)
 """
 
 import os
-
-import matplotlib
 import numpy as np
 import pandas as pd
-
+import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-# ── Paths ────────────────────────────────────────────────────────────────────
+# ── Paths ─────────────────────────────────────────────────────────────────────
 RAW_PATH = "D:/pjm-project/data/raw/pjm/pjm_system_lmp_hourly_avg.csv"
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "scenarios")
+OUT_DIR  = os.path.join(os.path.dirname(__file__), "..", "data", "scenarios")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-N_SCENARIOS = 50
-TRAIN_END = "2023-12-31"
+TRAIN_END   = "2023-12-31"
 RANDOM_SEED = 42
+
+SEASON_CONFIG = {
+    "winter": {"months": [12, 1, 2],  "n": 13, "color": "#4e91c9"},
+    "spring": {"months": [3,  4, 5],  "n": 12, "color": "#5cb85c"},
+    "summer": {"months": [6,  7, 8],  "n": 13, "color": "#e87a2a"},
+    "fall":   {"months": [9, 10, 11], "n": 12, "color": "#9b59b6"},
+}
 
 # ── 1. Load ───────────────────────────────────────────────────────────────────
 print("Loading data...")
 df = pd.read_csv(RAW_PATH, parse_dates=["datetime"])
-df = df.rename(columns={"datetime": "datetime", "system_lmp_avg": "lmp"})
+df = df.rename(columns={"system_lmp_avg": "lmp"})
 df = df.sort_values("datetime").reset_index(drop=True)
-
 print(f"  Loaded {len(df):,} rows  |  {df['datetime'].min()} to {df['datetime'].max()}")
 
-# ── 2. Restrict to training window ────────────────────────────────────────────
+# ── 2. Training window ────────────────────────────────────────────────────────
 train = df[df["datetime"] <= TRAIN_END].copy()
 print(f"  Training rows (<= {TRAIN_END}): {len(train):,}")
 
 # ── 3. Clean ──────────────────────────────────────────────────────────────────
-# 3a. Drop duplicate timestamps (can occur at DST fall-back — keep first)
 n_before = len(train)
 train = train.drop_duplicates(subset="datetime", keep="first")
 print(f"  Dropped {n_before - len(train)} duplicate timestamps")
 
-# 3b. Reindex to a complete hourly grid; NaN-fill gaps
 full_idx = pd.date_range(train["datetime"].min(), train["datetime"].max(), freq="h")
 train = train.set_index("datetime").reindex(full_idx)
 train.index.name = "datetime"
 n_missing = train["lmp"].isna().sum()
-print(f"  Filled {n_missing} missing hours via linear interpolation")
 train["lmp"] = train["lmp"].interpolate(method="linear")
 train = train.reset_index()
+print(f"  Filled {n_missing} missing hours via linear interpolation")
 
-# 3c. Cap extreme outliers at [1st, 99th] percentile to reduce spike distortion
 p01 = train["lmp"].quantile(0.01)
 p99 = train["lmp"].quantile(0.99)
 n_clipped = ((train["lmp"] < p01) | (train["lmp"] > p99)).sum()
 train["lmp"] = train["lmp"].clip(lower=p01, upper=p99)
 print(f"  Clipped {n_clipped} outlier values  (bounds: [{p01:.2f}, {p99:.2f}] $/MWh)")
 
-# ── 4. Build daily 24-hour feature matrix ─────────────────────────────────────
-train["date"] = train["datetime"].dt.date
-train["hour"] = train["datetime"].dt.hour
+# ── 4. Build daily 24-hour feature matrix ────────────────────────────────────
+train["date"]  = train["datetime"].dt.date
+train["hour"]  = train["datetime"].dt.hour
+train["month"] = train["datetime"].dt.month
 
 daily = (
-    train.pivot(
-        index="date", columns="hour", values="lmp"
-    ).dropna()  # drop days with any missing hour
+    train.pivot(index="date", columns="hour", values="lmp")
+    .dropna()
 )
 daily.columns = [f"h{c:02d}" for c in daily.columns]
-print(f"  Daily profiles: {len(daily)} complete days")
+daily["month"] = pd.to_datetime(daily.index.astype(str)).month
+print(f"  Complete daily profiles: {len(daily)}")
 
-# ── 5. K-means clustering → 50 scenarios ─────────────────────────────────────
-print(f"\nClustering into {N_SCENARIOS} scenarios...")
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(daily.values)
+total_days = len(daily)
 
-km = KMeans(n_clusters=N_SCENARIOS, random_state=RANDOM_SEED, n_init=20, max_iter=500)
-km.fit(X_scaled)
+# ── 5. Season-stratified k-means ─────────────────────────────────────────────
+all_scenarios = []
+scenario_id   = 1
 
-# Scenario centroids back in $/MWh
-centroids = scaler.inverse_transform(km.cluster_centers_)
+for season, cfg in SEASON_CONFIG.items():
+    mask     = daily["month"].isin(cfg["months"])
+    season_days = daily[mask].drop(columns="month")
+    n_days   = len(season_days)
+    n_clust  = cfg["n"]
+    print(f"\n  {season.capitalize()} ({n_days} days) -> {n_clust} scenarios")
 
-# Scenario probabilities = fraction of days in each cluster
-labels, counts = np.unique(km.labels_, return_counts=True)
-probs = counts / counts.sum()
+    scaler  = StandardScaler()
+    X       = scaler.fit_transform(season_days.values)
+    km      = KMeans(n_clusters=n_clust, random_state=RANDOM_SEED, n_init=20, max_iter=500)
+    km.fit(X)
 
-# Sort by probability (descending) for readability
-order = np.argsort(-probs)
-centroids = centroids[order]
-probs = probs[order]
-scenario_ids = np.arange(1, N_SCENARIOS + 1)
+    centroids = scaler.inverse_transform(km.cluster_centers_)
+    labels, counts = np.unique(km.labels_, return_counts=True)
+    # probability = days in cluster / total training days (so all 50 sum to 1)
+    probs = counts / total_days
 
-# ── 6. Save ───────────────────────────────────────────────────────────────────
-# 6a. scenarios.csv  —  one row per scenario, columns h00..h23 + probability
+    # sort by descending probability within season
+    order     = np.argsort(-probs)
+    centroids = centroids[order]
+    probs     = probs[order]
+
+    for i in range(n_clust):
+        row = {"scenario_id": scenario_id, "season": season, "probability": probs[i]}
+        for h in range(24):
+            row[f"h{h:02d}"] = centroids[i, h]
+        all_scenarios.append(row)
+        scenario_id += 1
+
+# ── 6. Save scenarios.csv ────────────────────────────────────────────────────
 hour_cols = [f"h{h:02d}" for h in range(24)]
-scen_df = pd.DataFrame(centroids, columns=hour_cols)
-scen_df.insert(0, "scenario_id", scenario_ids)
-scen_df["probability"] = probs
+scen_df   = pd.DataFrame(all_scenarios)
+col_order = ["scenario_id", "season", "probability"] + hour_cols
+scen_df   = scen_df[col_order]
+
+prob_sum = scen_df["probability"].sum()
+print(f"\n  Probability sum across all 50 scenarios: {prob_sum:.4f}")
 
 scen_path = os.path.join(OUT_DIR, "scenarios.csv")
 scen_df.to_csv(scen_path, index=False, float_format="%.4f")
-print(f"\nSaved: {scen_path}")
+print(f"Saved: {scen_path}")
 
-# 6b. scenario_metadata.csv  —  summary stats per scenario
-meta = scen_df[["scenario_id", "probability"]].copy()
-meta["mean_lmp"] = centroids.mean(axis=1)
-meta["min_lmp"] = centroids.min(axis=1)
-meta["max_lmp"] = centroids.max(axis=1)
-meta["peak_hour"] = centroids.argmax(axis=1)
+# ── 7. scenario_metadata.csv ─────────────────────────────────────────────────
+centroid_vals = scen_df[hour_cols].values
+meta = scen_df[["scenario_id", "season", "probability"]].copy()
+meta["mean_lmp"]  = centroid_vals.mean(axis=1)
+meta["min_lmp"]   = centroid_vals.min(axis=1)
+meta["max_lmp"]   = centroid_vals.max(axis=1)
+meta["peak_hour"] = centroid_vals.argmax(axis=1)
 meta_path = os.path.join(OUT_DIR, "scenario_metadata.csv")
 meta.to_csv(meta_path, index=False, float_format="%.4f")
 print(f"Saved: {meta_path}")
 
-# 6c. cleaning_log.csv  —  audit trail
-log = pd.DataFrame(
-    [
-        {
-            "raw_rows": len(df),
-            "train_rows": len(train),
-            "duplicate_drops": n_before - (n_before - (n_before - len(train))),
-            "missing_filled": int(n_missing),
-            "outliers_clipped": int(n_clipped),
-            "p01_clip": round(p01, 4),
-            "p99_clip": round(p99, 4),
-            "complete_days": len(daily),
-            "n_scenarios": N_SCENARIOS,
-            "train_end": TRAIN_END,
-        }
-    ]
-)
-log_path = os.path.join(OUT_DIR, "cleaning_log.csv")
-log.to_csv(log_path, index=False)
-print(f"Saved: {log_path}")
+# ── 8. cleaning_log.csv ───────────────────────────────────────────────────────
+log = pd.DataFrame([{
+    "raw_rows":         len(df),
+    "train_rows":       len(train),
+    "missing_filled":   int(n_missing),
+    "outliers_clipped": int(n_clipped),
+    "p01_clip":         round(p01, 4),
+    "p99_clip":         round(p99, 4),
+    "complete_days":    total_days,
+    "n_scenarios":      50,
+    "train_end":        TRAIN_END,
+    "method":           "season-stratified k-means",
+}])
+log.to_csv(os.path.join(OUT_DIR, "cleaning_log.csv"), index=False)
 
-# ── 7. Plot scenario fan ───────────────────────────────────────────────────────
-hours = np.arange(24)
-fig, ax = plt.subplots(figsize=(12, 6))
-for i in range(N_SCENARIOS):
-    alpha = 0.3 + 0.5 * probs[i] / probs.max()
-    ax.plot(hours, centroids[i], color="steelblue", alpha=float(alpha), linewidth=1)
+# ── 9. Grid plot: 4 seasons x (12-13) scenarios ───────────────────────────────
+hours  = np.arange(24)
+season_list = list(SEASON_CONFIG.keys())
 
-# Highlight top-5 most probable
-for i in range(5):
-    ax.plot(
-        hours, centroids[i], linewidth=2, label=f"S{scenario_ids[i]} (p={probs[i]:.3f})"
-    )
+fig, axes = plt.subplots(4, 13, figsize=(26, 12), sharey=False)
 
-ax.set_xlabel("Hour of Day (EST)")
-ax.set_ylabel("System Avg LMP ($/MWh)")
-ax.set_title(
-    f"PJM System RT LMP — {N_SCENARIOS} K-Means Scenarios (2020–2023 training)"
-)
-ax.set_xticks(hours)
-ax.legend(fontsize=8, loc="upper left")
-ax.grid(True, alpha=0.3)
-plt.tight_layout()
-fig_path = os.path.join(OUT_DIR, "scenario_fan.png")
-fig.savefig(fig_path, dpi=150)
-print(f"Saved: {fig_path}")
+for s_idx, season in enumerate(season_list):
+    cfg      = SEASON_CONFIG[season]
+    s_rows   = scen_df[scen_df["season"] == season].reset_index(drop=True)
+    n_clust  = cfg["n"]
+    for i in range(13):
+        ax = axes[s_idx, i]
+        if i < n_clust:
+            row = s_rows.iloc[i]
+            vals = row[hour_cols].values.astype(float)
+            ax.plot(hours, vals, color=cfg["color"], linewidth=1.2)
+            ax.fill_between(hours, vals, alpha=0.2, color=cfg["color"])
+            ax.set_title(f"S{int(row['scenario_id'])}\np={row['probability']:.3f}",
+                         fontsize=6.5, pad=2)
+            ax.set_xticks([0, 6, 12, 18, 23])
+            ax.tick_params(labelsize=5.5)
+            ax.grid(True, alpha=0.3, linewidth=0.5)
+        else:
+            ax.set_visible(False)
+    # Season label on left
+    axes[s_idx, 0].set_ylabel(season.capitalize(), fontsize=9, fontweight="bold",
+                               labelpad=4)
 
-# ── 8. Grid plot: all 50 scenarios ───────────────────────────────────────────
-NCOLS, NROWS = 10, 5
-fig2, axes = plt.subplots(NROWS, NCOLS, figsize=(22, 10), sharey=True)
-axes = axes.flatten()
-
-for i in range(N_SCENARIOS):
-    ax = axes[i]
-    ax.plot(hours, centroids[i], color="steelblue", linewidth=1.2)
-    ax.fill_between(hours, centroids[i], alpha=0.15, color="steelblue")
-    ax.set_title(f"S{scenario_ids[i]}\np={probs[i]:.3f}", fontsize=7, pad=2)
-    ax.set_xticks([0, 6, 12, 18, 23])
-    ax.tick_params(labelsize=6)
-    ax.grid(True, alpha=0.3, linewidth=0.5)
-
-fig2.suptitle(
-    "PJM System RT LMP — All 50 K-Means Scenarios (2020-2023 training)\n"
-    "Y-axis: System Avg LMP ($/MWh)   X-axis: Hour of Day (EPT)",
+fig.suptitle(
+    "PJM System RT LMP — 50 Season-Stratified K-Means Scenarios (2020-2023 training)\n"
+    "Rows: Winter / Spring / Summer / Fall   |   Y: System Avg LMP ($/MWh)   X: Hour (EPT)",
     fontsize=10
 )
 plt.tight_layout()
 grid_path = os.path.join(OUT_DIR, "scenario_grid.png")
-fig2.savefig(grid_path, dpi=150)
+fig.savefig(grid_path, dpi=150)
 print(f"Saved: {grid_path}")
+
+# ── 10. Fan plot: one panel per season ───────────────────────────────────────
+fig2, axes2 = plt.subplots(2, 2, figsize=(14, 8), sharey=False)
+axes2 = axes2.flatten()
+
+for s_idx, season in enumerate(season_list):
+    cfg    = SEASON_CONFIG[season]
+    s_rows = scen_df[scen_df["season"] == season]
+    ax     = axes2[s_idx]
+    probs_s = s_rows["probability"].values
+    for _, row in s_rows.iterrows():
+        alpha = 0.25 + 0.6 * row["probability"] / probs_s.max()
+        ax.plot(hours, row[hour_cols].values.astype(float),
+                color=cfg["color"], alpha=float(alpha), linewidth=1.1)
+    ax.set_title(f"{season.capitalize()} ({cfg['n']} scenarios)", fontsize=10)
+    ax.set_xlabel("Hour (EPT)")
+    ax.set_ylabel("LMP ($/MWh)")
+    ax.set_xticks(range(0, 24, 2))
+    ax.grid(True, alpha=0.3)
+
+fig2.suptitle("PJM System RT LMP — Seasonal Scenario Fans (2020-2023 training)", fontsize=11)
+plt.tight_layout()
+fan_path = os.path.join(OUT_DIR, "scenario_fan.png")
+fig2.savefig(fan_path, dpi=150)
+print(f"Saved: {fan_path}")
 
 print("\nDone.")
