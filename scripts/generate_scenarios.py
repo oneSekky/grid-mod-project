@@ -32,10 +32,10 @@ TRAIN_END   = "2023-12-31"
 RANDOM_SEED = 42
 
 SEASON_CONFIG = {
-    "winter": {"months": [12, 1, 2],  "n": 13, "color": "#4e91c9"},
-    "spring": {"months": [3,  4, 5],  "n": 12, "color": "#5cb85c"},
-    "summer": {"months": [6,  7, 8],  "n": 13, "color": "#e87a2a"},
-    "fall":   {"months": [9, 10, 11], "n": 12, "color": "#9b59b6"},
+    "winter": {"months": [12, 1, 2],  "n": 10, "color": "#4e91c9"},
+    "spring": {"months": [3,  4, 5],  "n": 10, "color": "#5cb85c"},
+    "summer": {"months": [6,  7, 8],  "n": 10, "color": "#e87a2a"},
+    "fall":   {"months": [9, 10, 11], "n": 10, "color": "#9b59b6"},
 }
 
 # ── 1. Load ───────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ log = pd.DataFrame([{
     "p01_clip":         round(p01, 4),
     "p99_clip":         round(p99, 4),
     "complete_days":    total_days,
-    "n_scenarios":      50,
+    "n_scenarios":      sum(cfg["n"] for cfg in SEASON_CONFIG.values()),
     "train_end":        TRAIN_END,
     "method":           "season-stratified k-means",
 }])
@@ -159,13 +159,14 @@ log.to_csv(os.path.join(OUT_DIR, "cleaning_log.csv"), index=False)
 hours  = np.arange(24)
 season_list = list(SEASON_CONFIG.keys())
 
-fig, axes = plt.subplots(4, 13, figsize=(26, 12), sharey=False)
+max_n = max(cfg["n"] for cfg in SEASON_CONFIG.values())
+fig, axes = plt.subplots(4, max_n, figsize=(20, 12), sharey=False)
 
 for s_idx, season in enumerate(season_list):
     cfg      = SEASON_CONFIG[season]
     s_rows   = scen_df[scen_df["season"] == season].reset_index(drop=True)
     n_clust  = cfg["n"]
-    for i in range(13):
+    for i in range(max_n):
         ax = axes[s_idx, i]
         if i < n_clust:
             row = s_rows.iloc[i]

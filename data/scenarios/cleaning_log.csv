@@ -1,2 +1,2 @@
 raw_rows,train_rows,missing_filled,outliers_clipped,p01_clip,p99_clip,complete_days,n_scenarios,train_end,method
-53312,35041,4,702,10.318,152.9094,1460,50,2023-12-31,season-stratified k-means
+53312,35041,4,702,10.318,152.9094,1460,40,2023-12-31,season-stratified k-means
