@@ -1,0 +1,2 @@
+raw_rows,train_rows,duplicate_drops,missing_filled,outliers_clipped,p01_clip,p99_clip,complete_days,n_scenarios,train_end
+53312,35041,-4,4,702,10.318,152.9094,1460,50,2023-12-31
