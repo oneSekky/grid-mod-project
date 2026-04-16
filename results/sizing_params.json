@@ -1,0 +1,29 @@
+{
+  "ETA_C": 0.93,
+  "ETA_D": 0.93,
+  "SOC_MIN": 0.1,
+  "SOC_MAX": 0.9,
+  "C_RATE": 0.5,
+  "CAPEX_PER_KWH": 334.0,
+  "N_CYCLES": 6000.0,
+  "C_DEG_per_MWh": 27.8333,
+  "ASSET_LIFE": 15,
+  "DISCOUNT_RATE": 0.07,
+  "E_VALUES": [
+    0.5,
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0
+  ],
+  "optimal_E_MWh": 0.5,
+  "optimal_NPV_$": -245481.02,
+  "solver": "HiGHS via CVXPY"
+}

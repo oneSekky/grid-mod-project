@@ -1,0 +1,19 @@
+{
+  "formulation": "two-stage non-anticipativity",
+  "E_MWH": 1.0,
+  "P_MW": 0.5,
+  "ETA_C": 0.93,
+  "ETA_D": 0.93,
+  "SOC_MIN": 0.1,
+  "SOC_MAX": 0.9,
+  "C_DEG_per_MWh": 27.8333,
+  "alphas": [
+    0.9,
+    0.95,
+    0.99
+  ],
+  "n_budget_pts": 15,
+  "unconstrained_ev_net": 9.294815,
+  "unconstrained_cvar_095": -6.609259,
+  "solver": "HiGHS via CVXPY"
+}

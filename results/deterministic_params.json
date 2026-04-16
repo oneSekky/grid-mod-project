@@ -1,0 +1,16 @@
+{
+  "E_MWH": 1.0,
+  "P_MW": 0.5,
+  "ETA_C": 0.93,
+  "ETA_D": 0.93,
+  "SOC_MIN": 0.1,
+  "SOC_MAX": 0.9,
+  "SOC_INIT": 0.5,
+  "SOC_FINAL_MIN": 0.1,
+  "C_CAPEX": 334000.0,
+  "N_CYCLES": 6000.0,
+  "C_DEG": 27.8333,
+  "solver": "HiGHS via CVXPY",
+  "max_verification_error": 6.5e-07,
+  "physical_checks_passed": true
+}

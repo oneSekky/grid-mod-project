@@ -1,0 +1,4 @@
+strategy,mean_daily_net,std_daily_net,total_net_year,min_day,max_day,pct_positive
+Optimized (oracle),19.9485,19.5663,7261.26,0.0,75.224,97.3
+Naive fixed hours,1.9794,10.2093,720.5,0.0,71.0702,4.1
+Naive price rank,9.9908,20.2848,3636.63,-33.6091,74.8921,29.7

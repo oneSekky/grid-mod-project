@@ -1,0 +1,22 @@
+{
+  "E_MWH": 1.0,
+  "P_MW": 0.5,
+  "ETA_C": 0.93,
+  "ETA_D": 0.93,
+  "SOC_MIN": 0.1,
+  "SOC_MAX": 0.9,
+  "SOC_INIT": 0.5,
+  "SOC_FINAL_MIN": 0.1,
+  "C_CAPEX": 334000.0,
+  "DOD_TYPICAL": 0.8,
+  "N_CYCLES": 6000.0,
+  "C_DEG_per_MWh": 27.8333,
+  "n_scenarios": 40,
+  "n_hours": 24,
+  "solver": "HiGHS via CVXPY",
+  "solver_status": "optimal",
+  "obj_value": 11.604399,
+  "ev_revenue": 21.692672,
+  "ev_deg_cost": 10.088272,
+  "ev_net": 11.604399
+}

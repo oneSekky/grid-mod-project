@@ -1,0 +1,33 @@
+{
+  "E_MWH": 1.0,
+  "P_MW": 0.5,
+  "ETA_C": 0.93,
+  "ETA_D": 0.93,
+  "SOC_MIN": 0.1,
+  "SOC_MAX": 0.9,
+  "C_DEG_per_MWh": 27.8333,
+  "backtest_year": 2024,
+  "n_days": 364,
+  "clip_bounds": [
+    10.318,
+    152.9094
+  ],
+  "solver": "HiGHS via CVXPY",
+  "offpeak_hours": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "onpeak_hours": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21
+  ]
+}

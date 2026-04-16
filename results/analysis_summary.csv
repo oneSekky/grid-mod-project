@@ -1,0 +1,13 @@
+Metric,Value
+In-sample E[Net] — Wait-and-See (40 scenarios),"$11.60/day  ($4,236/yr)"
+In-sample E[Net] — Two-Stage (committed schedule),"$9.29/day  ($3,393/yr)"
+EVPI (value of perfect scenario information),$2.31/day  ($843/yr)
+Backtest 2024 — Oracle (daily perfect foresight),"$19.95/day  ($7,261/yr)"
+Backtest 2024 — Naive price-rank (degrad-aware),"$9.99/day  ($3,637/yr)"
+Backtest 2024 — Naive fixed hours (degrad-aware),$1.98/day  ($721/yr)
+"NPV (1 MWh, arbitrage only, NREL ATB 2024 CapEx)",$-424k
+"Break-even annual revenue (1 MWh, incl. O&M)","$49,906/yr"
+Ancillary revenue needed to break even (1 MWh),"$46,513/yr"
+"C_DEG (degradation cost, calibrated NREL/DOE 2024)",$27.83/MWh throughput
+"CapEx assumption (NREL ATB 2024, US utility)",$334/kWh + $75k fixed
+Cycle life assumption (modern utility LFP),"6,000 cycles at 80% DoD"
