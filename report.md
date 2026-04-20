@@ -17,21 +17,16 @@ Design principle: slides are visual anchors only. One idea per slide. Script car
 ```
 Battery Energy Storage Bidding Optimization
 
-[Name 1]  —  Power Systems
-[Name 2]  —  Optimization & Operations Research
-[Name 3]  —  Data Engineering & Analytics
+[Name 1] 
+[Name 2] 
 
 ELEN 4510  ·  Spring 2026
 ```
 
 **PRESENTER SAYS:**
-"We're [team name]. Our three areas — power systems, stochastic optimization, and
-data engineering — map directly onto the problem we tackled. [Name 1] understands
-how the grid and the PJM market actually work. [Name 2] built the core optimization
-model. [Name 3] handled the data pipeline and the economic analysis.
+"We're [team name]. We tackled the problem of creating a system which intelligently trades electricity using grid-scale batteries as an arbitrage medium.
 
-What we built: a system that teaches a grid-scale battery how to trade electricity
-intelligently when it doesn't know what tomorrow's prices will be."
+We built a system that teaches trades intelligently when it doesn't know what tomorrow's prices will be with varying degrees of risk aversion."
 
 ---
 
@@ -46,6 +41,7 @@ intelligently when it doesn't know what tomorrow's prices will be."
 ```
 Buy low.  Sell high.
 But you have to decide now.
+How do you know what's low and what's high?
 ```
 
 ![Scenario price fan — 40 price paths for a single day](results/figure_1_model_overview.png)
@@ -93,7 +89,7 @@ We then extend the model to simultaneously bid into PJM's regulation market — 
 revenue stream — which is where the commercial story gets interesting.
 
 This project sits squarely in the course: we use a two-stage stochastic MILP for the
-core model, Rockafellar-Uryasev CVaR for tail-risk management, and standard NPV and
+core model, CVaR for tail-risk management, and standard NPV and
 Expected Value of Perfect Information for the economic conclusions."
 
 ---
