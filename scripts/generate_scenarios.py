@@ -2,11 +2,11 @@
 generate_scenarios.py
 
 Reads PJM system-wide hourly average RT LMP, cleans the data, and generates
-50 representative daily price scenarios using season-stratified k-means:
-  Winter (Dec/Jan/Feb): 13 scenarios
-  Spring (Mar/Apr/May): 12 scenarios
-  Summer (Jun/Jul/Aug): 13 scenarios
-  Fall   (Sep/Oct/Nov): 12 scenarios
+40 representative daily price scenarios using season-stratified k-means:
+  Winter (Dec/Jan/Feb): 10 scenarios
+  Spring (Mar/Apr/May): 10 scenarios
+  Summer (Jun/Jul/Aug): 10 scenarios
+  Fall   (Sep/Oct/Nov): 10 scenarios
 
 Probabilities are computed as (days in cluster) / (total training days).
 
@@ -123,7 +123,7 @@ col_order = ["scenario_id", "season", "probability"] + hour_cols
 scen_df   = scen_df[col_order]
 
 prob_sum = scen_df["probability"].sum()
-print(f"\n  Probability sum across all 50 scenarios: {prob_sum:.4f}")
+print(f"\n  Probability sum across all 40 scenarios: {prob_sum:.4f}")
 
 scen_path = os.path.join(OUT_DIR, "scenarios.csv")
 scen_df.to_csv(scen_path, index=False, float_format="%.4f")
@@ -185,7 +185,7 @@ for s_idx, season in enumerate(season_list):
                                labelpad=4)
 
 fig.suptitle(
-    "PJM System RT LMP — 50 Season-Stratified K-Means Scenarios (2020-2023 training)\n"
+    "PJM System RT LMP — 40 Season-Stratified K-Means Scenarios (2020-2023 training)\n"
     "Rows: Winter / Spring / Summer / Fall   |   Y: System Avg LMP ($/MWh)   X: Hour (EPT)",
     fontsize=10
 )

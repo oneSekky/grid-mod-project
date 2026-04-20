@@ -228,13 +228,13 @@ Data
   PJM RegD               (regulation) historical clearing prices & mileage
 
 Software
-  Python-MIP + CBC    MILP solver
+  CVXPY + HiGHS       MILP solver
   scikit-learn        k-means scenario generation
   pandas / NumPy      data pipeline
   matplotlib          visualization
 
 Battery (ground truth)
-  1 MW / 1 MWh LFP  ·  95% one-way efficiency  ·  SOC [10 %, 90 %]
+  0.5 MW / 1 MWh LFP  ·  93% one-way efficiency  ·  round-trip ~87%  ·  SOC [10 %, 90 %]
   Degradation: $27.83/MWh (arbitrage)  ·  $3.48/MWh (RegD)
 ```
 
@@ -252,8 +252,9 @@ the pipeline. There are no proprietary tools — everything is reproducible.
 
 This backtest chart is the payoff of holding 2024 out. Oracle — perfect price
 foresight — earns $7,261 over the year, about $20 a day. A price-rank heuristic
-earns roughly half. The fixed-schedule strategy never trades at all because the
-average spread in PJM 2024 never consistently clears the $64 degradation threshold.
+earns roughly half at $3,637. The fixed-schedule strategy earns only $721 — barely
+4% of trading days clear the $64 degradation threshold, and those days happen to fall
+in the fixed off-peak window just enough to produce a small positive sum.
 Those results are real, not fit to the training data."
 
 ---
@@ -277,8 +278,10 @@ means our scenario distribution is already capturing most of the available infor
 Better forecasting has limited upside.
 
 Second, the profitability gap. At NREL capital costs and a 7% cost of capital, you
-need roughly $50,000 per year to break even. Pure arbitrage delivers $7,000 — about
-7 cents on the dollar. Arbitrage alone cannot justify the investment. You need more."
+need roughly $50,000 per year to break even. The in-sample two-stage stochastic model
+is expected to earn $3,400 per year — about 7 cents on the dollar. Even the 2024
+oracle backtest with perfect daily foresight earns only $7,261 — about 15 cents on
+the dollar. Either way, arbitrage alone cannot justify the investment. You need more."
 
 ---
 
