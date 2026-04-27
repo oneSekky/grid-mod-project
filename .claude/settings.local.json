@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wmic logicaldisk:*)",
+      "Bash(powershell \"Get-PSDrive -PSProvider FileSystem | Select-Object Name, Root, Description\")",
+      "Bash(python -c \"import gurobipy; print\\('Gurobi version:', gurobipy.gurobi.version\\(\\)\\)\")",
+      "Bash(python scripts/optimize_stochastic.py)",
+      "Bash(python -c \"import cvxpy; print\\('cvxpy', cvxpy.__version__\\); print\\(cvxpy.installed_solvers\\(\\)\\)\")",
+      "Bash(python -c ' *)",
+      "Read(//d//**)",
+      "Bash(python scripts/optimize_cvar.py)",
+      "Bash(python scripts/optimize_sizing.py)",
+      "Bash(wait)",
+      "Bash(python scripts/backtest.py)",
+      "WebSearch",
+      "Bash(python scripts/analyze_results.py)",
+      "Bash(python scripts/optimize_deterministic.py)",
+      "Bash(python scripts/visualize_all.py)",
+      "Bash(python scripts/optimize_multiproduct.py)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(python scripts/fix_plots.py)",
+      "Bash(python -c \"from docx import Document; doc = Document\\('BESS_Script_SpeakerSplit \\(1\\).docx'\\); [print\\(p.text\\) for p in doc.paragraphs]\")"
+    ]
+  }
+}
