@@ -253,9 +253,8 @@ season_colors = {"winter": "#4e91c9", "spring": "#5cb85c",
 fig, ax = plt.subplots(figsize=(12, 5))
 for s in range(S):
     season   = scen_df.loc[s, "season"]
-    soc_line = [SOC_INIT * E_MWH] + list(soc_val[s])
     alpha_val = 0.15 + 0.5 * probs[s] / probs.max()
-    ax.plot(range(T + 1), soc_line,
+    ax.plot(HOURS, soc_val[s],
             color=season_colors[season], alpha=float(alpha_val), linewidth=0.9)
 
 for season, color in season_colors.items():
@@ -267,7 +266,8 @@ ax.axhline(SOC_MAX * E_MWH, color="green", linestyle="--", linewidth=0.8,
 ax.set_xlabel("Hour (EPT)", fontsize=11)
 ax.set_ylabel("State of Charge (MWh)", fontsize=11)
 ax.set_title("BESS SOC Trajectories — Stochastic EV Optimization (40 Scenarios)", fontsize=12)
-ax.set_xticks(range(0, T + 1, 2))
+ax.set_xticks(range(0, T, 2))
+ax.set_xlim(-0.5, 23.5)
 ax.legend(loc="upper right", fontsize=9)
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
@@ -297,12 +297,13 @@ ax2.bar(HOURS, pd_val[best_s], color="#e87a2a", alpha=0.8, label="Discharge (MW)
 ax2.bar(HOURS, -pc_val[best_s], color="#4e91c9", alpha=0.8, label="Charge (MW, neg)")
 ax2.set_ylabel("Power (MW)", fontsize=11)
 ax2.set_xlabel("Hour (EPT)", fontsize=11)
+ax2.set_xlim(-0.5, 23.5)
+ax2.set_xticks(range(0, T, 2))
 ax2.legend(loc="upper left", fontsize=9)
 ax2.grid(True, alpha=0.3)
 
 ax2b = ax2.twinx()
-soc_line = [SOC_INIT * E_MWH] + list(soc_val[best_s])
-ax2b.plot(range(T + 1), soc_line, color="purple", linewidth=1.5,
+ax2b.plot(HOURS, soc_val[best_s], color="purple", linewidth=1.5,
           linestyle="--", label="SOC (MWh)")
 ax2b.set_ylabel("SOC (MWh)", fontsize=11, color="purple")
 ax2b.tick_params(axis="y", labelcolor="purple")

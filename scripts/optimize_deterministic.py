@@ -250,8 +250,7 @@ for tc in TEST_CASES:
     ax2.grid(True, alpha=0.3)
 
     ax2b = ax2.twinx()
-    soc_line = [SOC_INIT * E_MWH] + list(res["soc"])
-    ax2b.plot(range(T + 1), soc_line, color="purple", linewidth=1.8,
+    ax2b.plot(HOURS, res["soc"], color="purple", linewidth=1.8,
               linestyle="--", label="SOC (MWh)")
     ax2b.axhline(SOC_MIN * E_MWH, color="red",   linestyle=":", linewidth=0.9, alpha=0.7)
     ax2b.axhline(SOC_MAX * E_MWH, color="green", linestyle=":", linewidth=0.9, alpha=0.7)
@@ -259,6 +258,8 @@ for tc in TEST_CASES:
     ax2b.tick_params(axis="y", labelcolor="purple")
     ax2b.set_ylim(0, E_MWH * 1.05)
     ax2b.legend(loc="upper right", fontsize=9)
+    ax1.set_xlim(-0.5, 23.5)
+    ax1.set_xticks(range(0, T, 2))
 
     plt.tight_layout()
     plot_path = os.path.join(OUT_DIR, f"deterministic_dispatch_s{sid}.png")

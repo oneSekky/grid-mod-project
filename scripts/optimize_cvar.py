@@ -303,9 +303,10 @@ if len(sub95) >= 2:
         ]:
             ax.bar(hours,  res["pd"],        color="#e87a2a", alpha=0.8, label="Discharge (MW)")
             ax.bar(hours, -res["pc"],        color=color,    alpha=0.8, label="Charge (MW, neg)")
+            ax.set_xlim(-0.5, 23.5)
+            ax.set_xticks(range(0, T, 2))
             ax2 = ax.twinx()
-            soc_line = [SOC_INIT * E_MWH] + list(res["soc"])
-            ax2.plot(range(T + 1), soc_line, color="purple", linewidth=1.5,
+            ax2.plot(hours, res["soc"], color="purple", linewidth=1.5,
                      linestyle="--", label="SOC (MWh)")
             ax2.set_ylabel("SOC (MWh)", color="purple", fontsize=10)
             ax2.tick_params(axis="y", labelcolor="purple")
